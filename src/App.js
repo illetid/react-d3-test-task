@@ -1,10 +1,13 @@
 import React from "react";
-import Canvas from "./Canvas";
+import Canvas from "./components/Canvas";
+import Sidebar from "./components/Sidebar";
+import "./App.css";
 
 function App() {
   return (
-    <div className="App">
+    <div className="app">
       <Canvas></Canvas>
+      <Sidebar />
     </div>
   );
 }
