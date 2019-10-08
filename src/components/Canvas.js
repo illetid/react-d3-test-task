@@ -5,7 +5,8 @@ export default class Canvas extends Component {
     super(props);
 
     this.state = {
-      Rect: { r: null, x0: null, y0: null },
+      default: { r: null, x0: null, y0: null, fill: "#ccc", stroke: "#000" },
+      Rect: { r: null, x0: null, y0: null, fill: "#ccc", stroke: "#000" },
       Shapes: []
     };
 
@@ -18,13 +19,18 @@ export default class Canvas extends Component {
     ];
   }
 
+  componentDidMount() {
+    this.createCanvas();
+
+    //this.drawElipses(this.ellipses);
+  }
+
   createCanvas() {
-    console.log(d3);
     this.canvas = d3
       .select(this.canvasRef.current)
       .append("svg")
       .attr("width", this.canvasRef.current.clientWidth)
-      .attr("height", this.canvasRef.current.clientHeight)
+      .attr("height", window.innerHeight)
       .style("border", "1px solid black");
 
     this.canvas.call(
@@ -46,12 +52,13 @@ export default class Canvas extends Component {
         y0: m.y,
         r: this.canvas
           .append("g")
-          .append("rect") // An SVG `rect` element
-          .attr("x", m.x) // Position at mouse location
-          .attr("y", m.y)
-          .attr("width", 1) // Make it tiny
+          .append("ellipse")
+          .attr("cx", m.x)
+          .attr("cy", m.y)
+          .attr("fill", state.Rect.fill)
+          .attr("stroke", state.Rect.stroke)
+          .attr("width", 1)
           .attr("height", 1)
-          .attr("class", "rect-main")
       }
     }));
   };
@@ -61,10 +68,8 @@ export default class Canvas extends Component {
     this.setState(state => {
       const r = { ...state.Rect };
       r.r
-        .attr("x", Math.min(state.Rect.x0, m.x))
-        .attr("y", Math.min(state.Rect.y0, m.y))
-        .attr("width", Math.abs(state.Rect.x0 - m.x))
-        .attr("height", Math.abs(state.Rect.y0 - m.y));
+        .attr("rx", Math.abs(state.Rect.x0 - m.x))
+        .attr("ry", Math.abs(state.Rect.y0 - m.y));
       return { ...state, Rect: r };
     });
   };
@@ -72,18 +77,13 @@ export default class Canvas extends Component {
     this.setState(state => ({
       ...state,
       Shapes: [...state.Shapes, state.Rect],
-      Rect: { r: null, x0: null, y0: null }
+      Rect: { r: null, x0: null, y0: null, fill: "#ccc", stroke: "#000" }
     }));
   };
   mouseOffset() {
-    var m = d3.event;
-    return m;
+    return d3.event;
   }
-  componentDidMount() {
-    this.createCanvas();
 
-    // this.drawElipses(this.ellipses);
-  }
   drawElipses(ellipses) {
     const svgEllipses = this.canvas
       .selectAll("ellipse")
