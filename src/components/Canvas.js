@@ -1,41 +1,57 @@
 import React, { Component } from "react";
 import * as d3 from "d3";
+import { connect } from "react-redux";
 import nanoid from "nanoid";
-export default class Canvas extends Component {
+import {
+  getShapes,
+  addShape,
+  deleteShape,
+  modifyShape,
+  selectShape
+} from "../actions";
+import colorsArray from "../helpers/randomColorsArray";
+class Canvas extends Component {
   constructor(props) {
     super(props);
 
+    //save local state to don't trigger redux on every drag update
     this.state = {
-      default: { r: null, x0: null, y0: null, fill: "#ccc", stroke: "#000" },
-      Rect: {
-        id: nanoid(),
-        r: null,
-        x0: null,
-        y0: null,
-        fill: "#ccc",
-        stroke: "#000"
-      },
-      Shapes: [],
-      active: null
+      Shape: this.generateDefaultShape()
     };
 
     this.canvasRef = React.createRef();
-    this.ellipses = [
-      { cx: 25, cy: 25, rx: 15, ry: 20 },
-      { cx: 75, cy: 75, rx: 15, ry: 20 },
-      { cx: 125, cy: 125, rx: 15, ry: 20 },
-      { cx: 175, cy: 175, rx: 15, ry: 20 }
-    ];
   }
 
   componentDidMount() {
     this.createCanvas();
-
-    // this.drawElipses(this.ellipses);
     this.eipseSetupEventHandlers();
     this.canvas.on("keydown", this.keydownEventHandlers);
   }
+  componentDidUpdate(prevProps, prevState, snapshot) {
+    if (prevProps.shapes.length !== this.props.shapes.length) {
+      console.log("test");
 
+      this.redrawCanvas();
+    }
+  }
+  generateDefaultShape() {
+    const fillIndex = Math.floor(Math.random() * colorsArray.length);
+    const strokeIndex = Math.floor(Math.random() * colorsArray.length);
+    const fillColor = colorsArray[fillIndex];
+    const strokeColor = colorsArray[strokeIndex];
+    return {
+      id: nanoid(),
+      r: null,
+      x0: null,
+      y0: null,
+      cx: null,
+      cy: null,
+      rx: null,
+      ry: null,
+      fill: fillColor,
+      stroke: strokeColor
+    };
+  }
   createCanvas() {
     this.canvas = d3
       .select(this.canvasRef.current)
@@ -47,12 +63,38 @@ export default class Canvas extends Component {
     this.canvas.call(
       d3
         .drag()
-        .on("start", this.addRectStart)
-        .on("drag", this.addRectDrag)
-        .on("end", this.addRectEnd)
+        .on("start", this.addShapeStart)
+        .on("drag", this.addShapeDrag)
+        .on("end", this.addShapeEnd)
     );
   }
-
+  //redraw is data changed outside
+  redrawCanvas() {
+    console.log(this.props.shapes);
+    this.canvas.selectAll("g").remove();
+    this.props.shapes.forEach(element => {
+      this.canvas
+        .append("g")
+        .append("ellipse")
+        .data([
+          {
+            cx: element.cx,
+            cy: element.cy,
+            rx: element.rx,
+            ry: element.ry
+          }
+        ])
+        .attr("cx", element.cx)
+        .attr("cy", element.cy)
+        .attr("rx", element.rx)
+        .attr("ry", element.ry)
+        .attr("fill", element.fill)
+        .attr("stroke", element.stroke)
+        .attr("uuid", element.id)
+        .attr("width", 1)
+        .attr("height", 1);
+    });
+  }
   // fire on every new ellipse
   eipseSetupEventHandlers() {
     let nodes = this.canvas.selectAll("ellipse");
@@ -62,6 +104,7 @@ export default class Canvas extends Component {
         .drag()
         .on("start", this.ellipseDragStartHandler(this))
         .on("drag", this.ellipseDragHandler(this))
+        .on("end", this.ellipseDragEndHandler(this))
     );
   }
   keydownEventHandlers() {
@@ -69,12 +112,16 @@ export default class Canvas extends Component {
       //@TODO add delete functionality
     }
   }
+
   // take id from node and pass to our handler
   // add closure because we use this from nodes.call
   // and that function set this to svg ellipse node element
   ellipseClickHandler = componentContext => {
     return function(i) {
-      componentContext.setActive(this.getAttribute("uuid"));
+      const shape = componentContext.props.shapes.find(
+        shape => shape.id == this.getAttribute("uuid")
+      );
+      componentContext.props.selectShape(shape);
     };
   };
   ellipseDragStartHandler = componentContext => {
@@ -92,59 +139,73 @@ export default class Canvas extends Component {
         .attr("cx", d3.event.x);
     };
   };
+  ellipseDragEndHandler = componentContext => {
+    return function(d, i) {
+      console.log("DRAGEND", d, i);
+
+      const shape = componentContext.props.shapes.find(
+        shape => shape.id == this.getAttribute("uuid")
+      );
+
+      componentContext.props.modifyShape({ ...shape, ...d });
+    };
+  };
   //elipse creation methods
-  addRectStart = () => {
+  addShapeStart = () => {
     const m = d3.event;
 
     this.setState(state => ({
       ...state,
-      Rect: {
-        ...state.Rect,
+      Shape: {
+        ...state.Shape,
         x0: m.x,
         y0: m.y,
+        cx: m.x,
+        cy: m.y,
+        rx: 0,
+        ry: 0,
         r: this.canvas
           .append("g")
           .append("ellipse")
           .data([
             {
-              сx: m.x,
-              сy: m.y
+              cx: m.x,
+              cy: m.y
             }
           ])
           .attr("cx", m.x)
           .attr("cy", m.y)
-          .attr("fill", state.Rect.fill)
-          .attr("stroke", state.Rect.stroke)
-          .attr("uuid", state.Rect.id)
+          .attr("fill", state.Shape.fill)
+          .attr("stroke", state.Shape.stroke)
+          .attr("uuid", state.Shape.id)
           .attr("width", 1)
           .attr("height", 1)
       }
     }));
   };
-  addRectDrag = () => {
+  addShapeDrag = () => {
     const m = d3.event;
 
     this.setState(state => {
-      const r = { ...state.Rect };
-      r.r
-        .attr("rx", Math.abs(state.Rect.x0 - m.x))
-        .attr("ry", Math.abs(state.Rect.y0 - m.y));
-      return { ...state, Rect: r };
+      const updatedShape = {
+        ...state.Shape,
+        rx: Math.abs(state.Shape.x0 - m.x),
+        ry: Math.abs(state.Shape.y0 - m.y)
+      };
+      updatedShape.r
+        .attr("rx", Math.abs(state.Shape.x0 - m.x))
+        .attr("ry", Math.abs(state.Shape.y0 - m.y));
+      return {
+        ...state,
+        Shape: updatedShape
+      };
     });
   };
-  addRectEnd = () => {
+  addShapeEnd = () => {
+    this.props.addShape(this.state.Shape);
+    this.props.selectShape(this.state.Shape);
     this.setState(state => ({
-      ...state,
-      active: state.Rect,
-      Shapes: [...state.Shapes, state.Rect],
-      Rect: {
-        id: nanoid(),
-        r: null,
-        x0: null,
-        y0: null,
-        fill: "#ccc",
-        stroke: "#000"
-      }
+      Shape: this.generateDefaultShape()
     }));
 
     this.eipseSetupEventHandlers();
@@ -152,39 +213,23 @@ export default class Canvas extends Component {
   mouseOffset() {
     return d3.event;
   }
-  setActive(id) {
-    this.setState(state => {
-      return { active: state.Shapes.find(ellips => ellips.id === id) };
-    });
-  }
-  drawElipses(ellipses) {
-    const svgEllipses = this.canvas
-      .selectAll("ellipse")
-      .data(ellipses)
-      .enter()
-      .append("ellipse");
-
-    svgEllipses
-      .attr("cx", (d, i) => {
-        return d.cx;
-      })
-      .attr("cy", (d, i) => {
-        return d.cy;
-      })
-      .attr("rx", (d, i) => {
-        return d.rx;
-      })
-      .attr("ry", (d, i) => {
-        return d.ry;
-      });
-  }
 
   render() {
     return (
       <div className="app__canvas">
-        <div>{JSON.stringify(this.state.active)}</div>
+        {/* <div>{JSON.stringify(this.state.active)}</div> */}
         <div ref={this.canvasRef}></div>
       </div>
     );
   }
 }
+
+const mapStateToProps = state => {
+  return {
+    shapes: state.shapes
+  };
+};
+export default connect(
+  mapStateToProps,
+  { getShapes, addShape, deleteShape, modifyShape, selectShape }
+)(Canvas);
