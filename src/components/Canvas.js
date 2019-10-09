@@ -1,13 +1,22 @@
 import React, { Component } from "react";
 import * as d3 from "d3";
+import nanoid from "nanoid";
 export default class Canvas extends Component {
   constructor(props) {
     super(props);
 
     this.state = {
       default: { r: null, x0: null, y0: null, fill: "#ccc", stroke: "#000" },
-      Rect: { r: null, x0: null, y0: null, fill: "#ccc", stroke: "#000" },
-      Shapes: []
+      Rect: {
+        id: nanoid(),
+        r: null,
+        x0: null,
+        y0: null,
+        fill: "#ccc",
+        stroke: "#000"
+      },
+      Shapes: [],
+      active: null
     };
 
     this.canvasRef = React.createRef();
@@ -22,7 +31,9 @@ export default class Canvas extends Component {
   componentDidMount() {
     this.createCanvas();
 
-    //this.drawElipses(this.ellipses);
+    // this.drawElipses(this.ellipses);
+    this.eipseSetupEventHandlers();
+    this.canvas.on("keydown", this.keydownEventHandlers);
   }
 
   createCanvas() {
@@ -41,22 +52,70 @@ export default class Canvas extends Component {
         .on("end", this.addRectEnd)
     );
   }
+
+  // fire on every new ellipse
+  eipseSetupEventHandlers() {
+    let nodes = this.canvas.selectAll("ellipse");
+    nodes.on("click", this.ellipseClickHandler(this));
+    nodes.call(
+      d3
+        .drag()
+        .on("start", this.ellipseDragStartHandler(this))
+        .on("drag", this.ellipseDragHandler(this))
+    );
+  }
+  keydownEventHandlers() {
+    if (d3.event.key === "Delete") {
+      //@TODO add delete functionality
+    }
+  }
+  // take id from node and pass to our handler
+  // add closure because we use this from nodes.call
+  // and that function set this to svg ellipse node element
+  ellipseClickHandler = componentContext => {
+    return function(i) {
+      componentContext.setActive(this.getAttribute("uuid"));
+    };
+  };
+  ellipseDragStartHandler = componentContext => {
+    return function() {
+      console.log("THIS", this, componentContext);
+    };
+  };
+  ellipseDragHandler = componentContext => {
+    return function(d, i) {
+      d.cx = d.cx + d3.event.dx;
+      d.cy = d.cy + d3.event.dy;
+      const coords = d3.event;
+      d3.select(this)
+        .attr("cy", d3.event.y)
+        .attr("cx", d3.event.x);
+    };
+  };
+  //elipse creation methods
   addRectStart = () => {
     const m = d3.event;
-    console.log(m);
 
     this.setState(state => ({
       ...state,
       Rect: {
+        ...state.Rect,
         x0: m.x,
         y0: m.y,
         r: this.canvas
           .append("g")
           .append("ellipse")
+          .data([
+            {
+              сx: m.x,
+              сy: m.y
+            }
+          ])
           .attr("cx", m.x)
           .attr("cy", m.y)
           .attr("fill", state.Rect.fill)
           .attr("stroke", state.Rect.stroke)
+          .attr("uuid", state.Rect.id)
           .attr("width", 1)
           .attr("height", 1)
       }
@@ -76,14 +135,28 @@ export default class Canvas extends Component {
   addRectEnd = () => {
     this.setState(state => ({
       ...state,
+      active: state.Rect,
       Shapes: [...state.Shapes, state.Rect],
-      Rect: { r: null, x0: null, y0: null, fill: "#ccc", stroke: "#000" }
+      Rect: {
+        id: nanoid(),
+        r: null,
+        x0: null,
+        y0: null,
+        fill: "#ccc",
+        stroke: "#000"
+      }
     }));
+
+    this.eipseSetupEventHandlers();
   };
   mouseOffset() {
     return d3.event;
   }
-
+  setActive(id) {
+    this.setState(state => {
+      return { active: state.Shapes.find(ellips => ellips.id === id) };
+    });
+  }
   drawElipses(ellipses) {
     const svgEllipses = this.canvas
       .selectAll("ellipse")
@@ -107,6 +180,11 @@ export default class Canvas extends Component {
   }
 
   render() {
-    return <div className="app__canvas" ref={this.canvasRef}></div>;
+    return (
+      <div className="app__canvas">
+        <div>{JSON.stringify(this.state.active)}</div>
+        <div ref={this.canvasRef}></div>
+      </div>
+    );
   }
 }
