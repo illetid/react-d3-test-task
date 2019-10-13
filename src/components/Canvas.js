@@ -26,11 +26,11 @@ class Canvas extends Component {
     this.createCanvas();
     this.eipseSetupEventHandlers();
     this.canvas.on("keydown", this.keydownEventHandlers);
+    this.redrawCanvas();
   }
   componentDidUpdate(prevProps, prevState, snapshot) {
     if (prevProps.shapes.length !== this.props.shapes.length) {
-      console.log("test");
-
+      //update canvas whend data was changed (now only for add/delete ellipse)
       this.redrawCanvas();
     }
   }
@@ -70,11 +70,12 @@ class Canvas extends Component {
   }
   //redraw is data changed outside
   redrawCanvas() {
-    console.log(this.props.shapes);
     this.canvas.selectAll("g").remove();
     this.props.shapes.forEach(element => {
-      this.canvas
+      const group = this.canvas
         .append("g")
+        .attr("class", `group-${element.id}`);
+      group
         .append("ellipse")
         .data([
           {
@@ -93,6 +94,50 @@ class Canvas extends Component {
         .attr("uuid", element.id)
         .attr("width", 1)
         .attr("height", 1);
+
+      // //add circles as controls for each element element
+      // const circleRadius = 8;
+      // //center to move
+      // group
+      //   .append("circle")
+      //   .attr("fill", "#000")
+      //   .attr("stroke", "#fff")
+      //   .attr("cx", element.cx)
+      //   .attr("cy", element.cy)
+      //   .attr("r", circleRadius);
+
+      // // left right to change rx
+
+      // group
+      //   .append("circle")
+      //   .attr("fill", "#000")
+      //   .attr("stroke", "#fff")
+      //   .attr("cx", element.cx - element.rx)
+      //   .attr("cy", element.cy)
+      //   .attr("r", circleRadius);
+
+      // group
+      //   .append("circle")
+      //   .attr("fill", "#000")
+      //   .attr("stroke", "#fff")
+      //   .attr("cx", element.cx + element.rx)
+      //   .attr("cy", element.cy)
+      //   .attr("r", circleRadius);
+      // // top bottom for change ry
+      // group
+      //   .append("circle")
+      //   .attr("fill", "#000")
+      //   .attr("stroke", "#fff")
+      //   .attr("cx", element.cx)
+      //   .attr("cy", element.cy - element.ry)
+      //   .attr("r", circleRadius);
+      // group
+      //   .append("circle")
+      //   .attr("fill", "#000")
+      //   .attr("stroke", "#fff")
+      //   .attr("cx", element.cx)
+      //   .attr("cy", element.cy + element.ry)
+      //   .attr("r", circleRadius);
     });
   }
   // fire on every new ellipse
@@ -118,21 +163,21 @@ class Canvas extends Component {
   // and that function set this to svg ellipse node element
   ellipseClickHandler = componentContext => {
     return function(i) {
-      const shape = componentContext.props.shapes.find(
-        shape => shape.id == this.getAttribute("uuid")
-      );
-      componentContext.props.selectShape(shape);
+      componentContext.props.selectShape(this.getAttribute("uuid"));
     };
   };
   ellipseDragStartHandler = componentContext => {
     return function() {
-      console.log("THIS", this, componentContext);
+      // console.log("THIS", this, componentContext);
     };
   };
   ellipseDragHandler = componentContext => {
     return function(d, i) {
-      d.cx = d.cx + d3.event.dx;
-      d.cy = d.cy + d3.event.dy;
+      // d.cx = d.cx + d3.event.dx;
+      // d.cy = d.cy + d3.event.dy;
+
+      d.cx = d3.event.x;
+      d.cy = d3.event.y;
       const coords = d3.event;
       d3.select(this)
         .attr("cy", d3.event.y)
@@ -141,12 +186,9 @@ class Canvas extends Component {
   };
   ellipseDragEndHandler = componentContext => {
     return function(d, i) {
-      console.log("DRAGEND", d, i);
-
       const shape = componentContext.props.shapes.find(
         shape => shape.id == this.getAttribute("uuid")
       );
-
       componentContext.props.modifyShape({ ...shape, ...d });
     };
   };
@@ -203,7 +245,7 @@ class Canvas extends Component {
   };
   addShapeEnd = () => {
     this.props.addShape(this.state.Shape);
-    this.props.selectShape(this.state.Shape);
+    this.props.selectShape(this.state.Shape.id);
     this.setState(state => ({
       Shape: this.generateDefaultShape()
     }));
@@ -217,7 +259,6 @@ class Canvas extends Component {
   render() {
     return (
       <div className="app__canvas">
-        {/* <div>{JSON.stringify(this.state.active)}</div> */}
         <div ref={this.canvasRef}></div>
       </div>
     );
@@ -226,7 +267,7 @@ class Canvas extends Component {
 
 const mapStateToProps = state => {
   return {
-    shapes: state.shapes
+    shapes: state.shapes.list
   };
 };
 export default connect(
