@@ -2,12 +2,11 @@ import {
   GET_SHAPES,
   ADD_SHAPE,
   DELETE_SHAPE,
-  MODIFY_SHAPE
+  MODIFY_SHAPE,
+  SELECT_SHAPE
 } from "../actions/types";
 
 const updateObjectInArray = (array, payload) => {
-  console.log(payload);
-
   return array.map(item => {
     if (item.id !== payload.id) {
       return item;
@@ -20,16 +19,24 @@ const updateObjectInArray = (array, payload) => {
   });
 };
 
-export default (state = [], action) => {
+export default (state = { list: [], active: null }, action) => {
   switch (action.type) {
     case GET_SHAPES:
       return state;
     case ADD_SHAPE:
-      return [...state, action.payload];
+      return { ...state, list: [...state.list, action.payload] };
     case DELETE_SHAPE:
-      return state.filter(s => s.id !== action.payload.id);
+      return {
+        ...state,
+        list: state.list.filter(s => s.id !== action.payload.id)
+      };
     case MODIFY_SHAPE:
-      return updateObjectInArray(state, action.payload);
+      return {
+        ...state,
+        list: updateObjectInArray(state.list, action.payload)
+      };
+    case SELECT_SHAPE:
+      return { ...state, active: action.payload };
     default:
       return state;
   }

@@ -24,8 +24,12 @@ const SelectedShape = ({ shape, deleteShape }) => {
 };
 
 const mapStateToProps = state => {
+  const active = state.shapes.list.find(
+    shape => shape.id === state.shapes.active
+  );
+
   return {
-    shape: state.selectedShape
+    shape: active
   };
 };
 export default connect(

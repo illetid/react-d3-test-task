@@ -8,7 +8,7 @@ const ShapesList = ({ shapes, selectShape }) => {
   }
   const shapeListItem = shape => {
     return (
-      <li onClick={() => selectShape(shape)} key={shape.id}>
+      <li onClick={() => selectShape(shape.id)} key={shape.id}>
         Ellipse [id: {shape.id}]
       </li>
     );
@@ -23,7 +23,7 @@ const ShapesList = ({ shapes, selectShape }) => {
 
 const mapStateToProps = state => {
   return {
-    shapes: state.shapes
+    shapes: state.shapes.list
   };
 };
 export default connect(
