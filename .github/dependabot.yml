@@ -1,0 +1,32 @@
+version: 2
+updates:
+- package-ecosystem: npm
+  directory: "/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 10
+  ignore:
+  - dependency-name: d3
+    versions:
+    - 6.5.0
+    - 6.6.0
+    - 6.6.1
+    - 6.6.2
+  - dependency-name: react-redux
+    versions:
+    - 7.2.2
+    - 7.2.3
+  - dependency-name: nanoid
+    versions:
+    - 3.1.20
+    - 3.1.21
+  - dependency-name: react-scripts
+    versions:
+    - 4.0.1
+    - 4.0.2
+  - dependency-name: redux
+    versions:
+    - 4.0.5
+  - dependency-name: react
+    versions:
+    - 17.0.1
